@@ -1,85 +1,53 @@
-import copy
-class Node:
-    def __init__(self, data, level, fval):
-        self.data = data
-        self.level = level
-        self.fval = fval
+import heapq
 
-    def generate_child(self):
-        x, y = self.find(self.data, '_')
-        val_list = [[x, y - 1], [x, y + 1], [x - 1, y], [x + 1, y]]
-        children = []
-        for i in val_list:
-            child = self.shuffle(self.data, x, y, i[0], i[1])
-            if child is not None:
-                child_node = Node(child, self.level + 1, 0)
-                children.append(child_node)
-        return children
+def a_star(graph, start, goal, heuristic):
+    open_list = []
+    heapq.heappush(open_list, (0, start))  # (f_score, node)
+    came_from = {}  # To reconstruct path
+    g_score = {node: float('inf') for node in graph}
+    g_score[start] = 0
 
-    def shuffle(self, data, x1, y1, x2, y2):
-        if x2 >= 0 and x2 < len(data) and y2 >= 0 and y2 < len(data):
-            temp_data = copy.deepcopy(data)
-            temp = temp_data[x2][y2]
-            temp_data[x2][y2] = temp_data[x1][y1]
-            temp_data[x1][y1] = temp
-            return temp_data
-        else:
-            return None
+    while open_list:
+        _, current = heapq.heappop(open_list)
 
-    def find(self, data, x):
-        for i in range(len(self.data)):
-            for j in range(len(self.data)):
-                if data[i][j] == x:
-                    return i, j
+        if current == goal:
+            # Reconstruct path
+            path = []
+            while current in came_from:
+                path.append(current)
+                current = came_from[current]
+            path.append(start)
+            return path[::-1]
 
-class Puzzle:
-    def __init__(self, size):
-        self.size = size
-        self.open = []
-        self.closed = []
+        for neighbor, cost in graph[current]:
+            temp_g = g_score[current] + cost
+            if temp_g < g_score[neighbor]:
+                came_from[neighbor] = current
+                g_score[neighbor] = temp_g
+                f_score = temp_g + heuristic[neighbor]
+                heapq.heappush(open_list, (f_score, neighbor))
 
-    def accept(self):
-        puz = []
-        for i in range(0, self.size):
-            temp = input().split(" ")
-            puz.append(temp)
-        return puz
+    return None  # No path found
 
-    def f(self, start, goal):
-        return self.h(start.data, goal) + start.level
+# Sample graph (node: [(neighbor, cost)])
+graph = {
+    'A': [('B', 1), ('C', 4)],
+    'B': [('A', 1), ('D', 2), ('E', 5)],
+    'C': [('A', 4), ('F', 3)],
+    'D': [('B', 2)],
+    'E': [('B', 5), ('F', 1)],
+    'F': [('C', 3), ('E', 1)]
+}
 
-    def h(self, start, goal):
-        temp = 0
-        for i in range(0, self.size):
-            for j in range(0, self.size):
-                if start[i][j] != goal[i][j] and start[i][j] != '_':
-                    temp += 1
-        return temp
+# Heuristic values (example: straight-line distances to goal 'F')
+heuristic = {
+    'A': 7,
+    'B': 6,
+    'C': 2,
+    'D': 6,
+    'E': 1,
+    'F': 0
+}
 
-    def process(self):
-        print("enter the start state matrix \n")
-        start = self.accept()
-        print("enter the goal state matrix \n")
-        goal = self.accept()
-        start = Node(start, 0, 0)
-        start.fval = self.f(start, goal)
-        self.open.append(start)
-        print("\n\n")
-        while True:
-            cur = self.open[0]
-            print("\n")
-            for i in cur.data:
-                for j in i:
-                    print(j, end=" ")
-                print("")
-            if (self.h(cur.data, goal) == 0):
-                break
-            for i in cur.generate_child():
-                i.fval = self.f(i, goal)
-                self.open.append(i)
-            self.closed.append(cur)
-            del self.open[0]
-            self.open.sort(key=lambda x: x.fval, reverse=False)
-
-puz = Puzzle(3)
-puz.process()
+path = a_star(graph, 'A', 'F', heuristic)
+print("Shortest path from A to F:", path)
